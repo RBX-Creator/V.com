@@ -173,7 +173,7 @@ mediaInput?.addEventListener("change", async (e) => {
   const files = Array.from(e.target.files || []);
   for (const file of files.slice(0, 4)) {
     if (file.size > 2 * 1024 * 1024) {
-      alert("Datei zu groß (max 2MB).");
+      alert("Datei zu groÃ (max 2MB).");
       continue;
     }
     const dataUrl = await readFileAsDataURL(file);
@@ -203,7 +203,7 @@ function renderMediaPreview() {
   mediaPreview.innerHTML = selectedMedia.map((m, i) => `
     <div class="media-item">
       ${m.type === "video" ? `<video src="${m.dataUrl}" muted></video>` : `<img src="${m.dataUrl}" alt="" />`}
-      <button class="remove-media" data-i="${i}">✕</button>
+      <button class="remove-media" data-i="${i}">â</button>
     </div>
   `).join("");
   mediaPreview.querySelectorAll(".remove-media").forEach(btn => {
@@ -252,7 +252,7 @@ async function seedDemoPostsIfEmpty() {
     { name: "Elon Musk", handle: "elonmusk", text: "V.com is looking interesting. Competition is good for the universe.", likes: [], repostedBy: [], repliesCount: 0, views: 0 },
     { name: "Grok", handle: "grok", text: "Building the future one post at a time.\nWelcome to V.", likes: [], repostedBy: [], repliesCount: 0, views: 0 },
     { name: "xAI", handle: "xai", text: "The universe is the only true open source project.", likes: [], repostedBy: [], repliesCount: 0, views: 0 },
-    { name: "V Official", handle: "v", text: "Welcome to V.com 🔥\nThis is only the beginning. Post, connect, explore.", likes: [], repostedBy: [], repliesCount: 0, views: 0 }
+    { name: "V Official", handle: "v", text: "Welcome to V.com ð¥\nThis is only the beginning. Post, connect, explore.", likes: [], repostedBy: [], repliesCount: 0, views: 0 }
   ];
   for (const d of demos) {
     await addDoc(collection(db, "posts"), { ...d, media: [], userId: "demo", createdAt: serverTimestamp() });
@@ -279,12 +279,24 @@ async function countView(postId) {
 
 async function loadReplies(postId) {
   if (repliesCache[postId]) return repliesCache[postId];
-  const q = query(collection(db, "replies"), where("postId", "==", postId), orderBy("createdAt", "asc"));
-  const snap = await getDocs(q);
-  const list = [];
-  snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-  repliesCache[postId] = list;
-  return list;
+  try {
+    // only where â no composite index needed; sort in JS
+    const q = query(collection(db, "replies"), where("postId", "==", postId));
+    const snap = await getDocs(q);
+    const list = [];
+    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
+    list.sort((a, b) => {
+      const ta = a.createdAt?.toMillis?.() || a.createdAt?.seconds || 0;
+      const tb = b.createdAt?.toMillis?.() || b.createdAt?.seconds || 0;
+      return ta - tb;
+    });
+    repliesCache[postId] = list;
+    return list;
+  } catch (err) {
+    console.error("Replies load error:", err);
+    repliesCache[postId] = [];
+    return [];
+  }
 }
 
 function renderPosts(posts, containerId) {
@@ -322,25 +334,25 @@ function renderPosts(posts, containerId) {
         <div class="post-header">
           <strong>${escapeHtml(post.name || "User")}</strong>
           <span>@${escapeHtml(post.handle || "user")}</span>
-          <span>·</span>
+          <span>Â·</span>
           <span>${time}</span>
         </div>
         <div class="post-text">${escapeHtml(post.text || "")}</div>
         ${mediaHtml}
         <div class="post-actions">
           <button class="action-btn" data-action="reply" data-id="${post.id}">
-            <span>💬</span> <span class="count">${replyCount}</span>
+            <span>ð¬</span> <span class="count">${replyCount}</span>
           </button>
           <button class="action-btn ${reposted ? "reposted" : ""}" data-action="repost" data-id="${post.id}">
-            <span>🔁</span> <span class="count">${repostCount}</span>
+            <span>ð</span> <span class="count">${repostCount}</span>
           </button>
           <button class="action-btn ${liked ? "liked" : ""}" data-action="like" data-id="${post.id}">
-            <span>${liked ? "❤️" : "🤍"}</span> <span class="count">${likeCount}</span>
+            <span>${liked ? "â¤ï¸" : "ð¤"}</span> <span class="count">${likeCount}</span>
           </button>
           <button class="action-btn" data-action="views">
-            <span>📊</span> <span class="count">${formatNumber(post.views || 0)}</span>
+            <span>ð</span> <span class="count">${formatNumber(post.views || 0)}</span>
           </button>
-          <button class="action-btn" data-action="share"><span>📤</span></button>
+          <button class="action-btn" data-action="share"><span>ð¤</span></button>
         </div>
         <div class="replies-section ${openReplyId === post.id ? "" : "hidden"}" data-replies-for="${post.id}">
           <div class="replies-list" id="replies-${post.id}"></div>
@@ -445,10 +457,10 @@ function renderPosts(posts, containerId) {
 async function loadAndShowReplies(postId) {
   const container = document.getElementById("replies-" + postId);
   if (!container) return;
-  container.innerHTML = `<div class="reply-loading">Loading...</div>`;
+  container.innerHTML = `<div class="reply-loading">Kommentare werden geladen...</div>`;
   const replies = await loadReplies(postId);
   if (replies.length === 0) {
-    container.innerHTML = `<div class="no-replies">No replies yet. Be the first!</div>`;
+    container.innerHTML = `<div class="no-replies">Noch keine Kommentare. Sei der Erste!</div>`;
     return;
   }
   container.innerHTML = replies.map(r => {
@@ -460,7 +472,7 @@ async function loadAndShowReplies(postId) {
           <div class="post-header">
             <strong>${escapeHtml(r.name || "User")}</strong>
             <span>@${escapeHtml(r.handle || "user")}</span>
-            <span>·</span>
+            <span>Â·</span>
             <span>${t}</span>
           </div>
           <div class="post-text">${escapeHtml(r.text || "")}</div>
